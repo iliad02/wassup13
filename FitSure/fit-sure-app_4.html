@@ -1,0 +1,2324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Fit-Sure — AI 패션 코디</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; -webkit-tap-highlight-color: transparent; }
+body {
+  height: 100%;
+  font-family: 'Noto Sans KR', sans-serif;
+  background: #0a0a0f;
+  color: #f0ede8;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ===== VARIABLES ===== */
+:root {
+  --cream: #f0ede8;
+  --cream2: #d8d4cc;
+  --gold: #c9a96e;
+  --gold2: #e8c98a;
+  --bg: #0a0a0f;
+  --bg2: #111118;
+  --bg3: #1a1a24;
+  --bg4: #22222e;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.15);
+  --accent: #c9a96e;
+  --accent-glow: rgba(201,169,110,0.2);
+  --muted: rgba(240,237,232,0.45);
+  --hint: rgba(240,237,232,0.25);
+  --r: 16px;
+  --rl: 24px;
+  --pill: 100px;
+}
+
+/* ===== FITTING HERO IMAGE ===== */
+.fitting-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.fitting-hero-img.loaded { opacity: 1; }
+.fitting-hero-skeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #1a1520, #0d0d18);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 10px;
+}
+.fitting-hero-skeleton-ring {
+  width: 48px; height: 48px;
+  border: 2px solid rgba(201,169,110,0.2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+.fitting-hero-skeleton-text {
+  font-size: 10px; letter-spacing: 0.15em;
+  color: var(--hint); text-transform: uppercase;
+}
+.fitting-hero-gradient {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 160px;
+  background: linear-gradient(to top, var(--bg) 20%, transparent);
+  z-index: 2;
+}
+.fitting-hero-top-gradient {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 80px;
+  background: linear-gradient(to bottom, var(--bg) 0%, transparent);
+  z-index: 2;
+}
+.ar-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* ===== DEVICE FRAME ===== */
+.device-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: radial-gradient(ellipse at 30% 20%, rgba(201,169,110,0.06) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 80%, rgba(100,80,200,0.04) 0%, transparent 60%),
+              #0a0a0f;
+}
+
+.device {
+  width: 390px;
+  height: 844px;
+  background: var(--bg);
+  border-radius: 48px;
+  border: 1px solid rgba(255,255,255,0.12);
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.8),
+    0 40px 80px rgba(0,0,0,0.8),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+/* notch */
+.device::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%; transform: translateX(-50%);
+  width: 120px; height: 34px;
+  background: #0a0a0f;
+  border-radius: 0 0 20px 20px;
+  z-index: 100;
+}
+
+/* ===== SCREEN CONTAINER ===== */
+.screen-wrap {
+  width: 100%; height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  transform: translateX(30px);
+  overflow: hidden;
+}
+.screen.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(0);
+}
+.screen.exit {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+/* ===== SCROLLABLE BODY ===== */
+.scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll-body::-webkit-scrollbar { display: none; }
+
+/* ===== TOPBAR ===== */
+.topbar {
+  padding: 48px 24px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.topbar-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--cream);
+  letter-spacing: 0.05em;
+  flex: 1;
+}
+.back-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.back-btn:hover { background: var(--bg4); border-color: var(--gold); }
+.back-btn svg { width: 16px; height: 16px; stroke: var(--cream2); }
+
+/* ===== LOGO MARK ===== */
+.logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+/* ===== STEP INDICATOR ===== */
+.step-dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.step-dot {
+  width: 4px; height: 4px;
+  border-radius: 2px;
+  background: var(--border2);
+  transition: all 0.3s;
+}
+.step-dot.done { background: var(--gold); width: 12px; }
+.step-dot.active { background: var(--gold2); width: 18px; }
+
+/* ===== BUTTON STYLES ===== */
+.btn-primary {
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--pill);
+  border: none;
+  background: linear-gradient(135deg, #c9a96e, #e8c98a);
+  color: #0a0a0f;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0);
+  transition: background 0.2s;
+}
+.btn-primary:hover::after { background: rgba(255,255,255,0.1); }
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-secondary {
+  width: 100%;
+  padding: 15px;
+  border-radius: var(--pill);
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--cream);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-secondary:hover { background: var(--bg3); border-color: var(--gold); }
+.btn-secondary:active { transform: scale(0.98); }
+
+.btn-ghost {
+  padding: 10px 20px;
+  border-radius: var(--pill);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-ghost:hover { border-color: var(--gold); color: var(--cream); }
+
+/* ===== BOTTOM BAR ===== */
+.bottom-bar {
+  padding: 16px 24px 32px;
+  flex-shrink: 0;
+  background: linear-gradient(to top, var(--bg) 60%, transparent);
+}
+
+/* ===== SECTION LABEL ===== */
+.sec-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+
+/* ===== DIVIDER ===== */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+
+/* =============================================
+   SCREEN 1: FITTING (HOME)
+   ============================================= */
+#screen-fitting {
+  background: #0a0a0f;
+}
+.fitting-hero {
+  position: relative;
+  height: 420px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.fitting-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(201,169,110,0.15) 0%, transparent 60%),
+    linear-gradient(to bottom, #1a1520, #0a0a0f);
+}
+.face-mock {
+  position: absolute;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 220px; height: 320px;
+}
+.face-silhouette {
+  position: absolute;
+  bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 160px; height: 220px;
+  background: radial-gradient(ellipse, rgba(201,169,110,0.08) 0%, transparent 70%);
+  border: 1px solid rgba(201,169,110,0.12);
+  border-radius: 50% 50% 45% 45%;
+}
+.glasses-display {
+  position: absolute;
+  top: 60px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px;
+}
+.lens {
+  width: 52px; height: 30px;
+  border: 2.5px solid var(--gold2);
+  border-radius: 14px 14px 12px 12px;
+  background: rgba(201,169,110,0.08);
+  position: relative;
+}
+.lens::after {
+  content: '';
+  position: absolute;
+  top: 4px; left: 4px; right: 4px; bottom: 4px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.06), transparent);
+  border-radius: 10px;
+}
+.bridge { width: 12px; height: 2px; background: var(--gold2); border-radius: 1px; }
+.temple { width: 30px; height: 2px; background: var(--gold2); border-radius: 1px; }
+.ar-ring {
+  position: absolute;
+  top: 40px; left: 50%; transform: translateX(-50%);
+  width: 180px; height: 80px;
+  border: 1px solid rgba(201,169,110,0.2);
+  border-radius: 50%;
+  animation: pulse-ring 3s ease-in-out infinite;
+}
+.ar-ring2 {
+  position: absolute;
+  top: 30px; left: 50%; transform: translateX(-50%);
+  width: 200px; height: 100px;
+  border: 1px solid rgba(201,169,110,0.08);
+  border-radius: 50%;
+  animation: pulse-ring 3s ease-in-out infinite 0.5s;
+}
+@keyframes pulse-ring {
+  0%, 100% { opacity: 0.3; transform: translateX(-50%) scale(1); }
+  50% { opacity: 0.8; transform: translateX(-50%) scale(1.02); }
+}
+.scan-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold), transparent);
+  animation: scan 2.5s ease-in-out infinite;
+  opacity: 0.4;
+}
+@keyframes scan {
+  0% { top: 30%; opacity: 0; }
+  20% { opacity: 0.6; }
+  80% { opacity: 0.6; }
+  100% { top: 80%; opacity: 0; }
+}
+.fitting-info {
+  padding: 24px 24px 0;
+}
+.glasses-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px;
+  font-weight: 300;
+  color: var(--cream);
+  margin-bottom: 4px;
+}
+.glasses-meta {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 16px;
+}
+.glasses-tag {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--pill);
+}
+.glasses-price {
+  font-size: 16px; font-weight: 500; color: var(--gold);
+  margin-left: auto;
+}
+.glasses-variants {
+  display: flex; gap: 8px; margin-bottom: 20px;
+}
+.variant-dot {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+.variant-dot.selected { border-color: var(--gold); }
+.fitsure-cta {
+  display: flex; align-items: center; gap: 10px;
+}
+.fitsure-badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--pill);
+  flex: 1;
+}
+.fitsure-badge-icon {
+  width: 20px; height: 20px;
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+}
+.fitsure-badge-text { font-size: 12px; color: var(--muted); }
+.fitsure-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #c9a96e, #e8c98a);
+  border: none;
+  border-radius: var(--pill);
+  color: #0a0a0f;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+.fitsure-btn:active { transform: scale(0.96); }
+.fitsure-glow {
+  position: absolute;
+  bottom: 90px; left: 50%; transform: translateX(-50%);
+  width: 200px; height: 40px;
+  background: var(--accent-glow);
+  filter: blur(20px);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+
+/* =============================================
+   SCREEN 2: PREFERENCES
+   ============================================= */
+#screen-prefs .scroll-body { padding: 0 24px 24px; }
+.body-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--rl);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.body-section-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+}
+.body-icon {
+  width: 32px; height: 32px;
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.body-section-title {
+  font-size: 14px; font-weight: 500; color: var(--cream);
+}
+.body-section-sub { font-size: 11px; color: var(--muted); }
+.form-row { margin-bottom: 14px; }
+.form-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.05em; }
+.form-select {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--cream);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23c9a96e' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+  transition: border-color 0.2s;
+}
+.form-select:focus { outline: none; border-color: var(--gold); }
+.form-select option { background: #1a1a24; color: var(--cream); }
+.color-btn {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  transition: all 0.2s;
+}
+.color-btn:hover { border-color: var(--gold); }
+.color-dots { display: flex; gap: 4px; flex: 1; }
+.color-dot-sm {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.color-btn-arrow { font-size: 10px; color: var(--gold); }
+
+/* Color Picker Sheet */
+.sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  backdrop-filter: blur(4px);
+}
+.sheet-overlay.open { opacity: 1; pointer-events: all; }
+.bottom-sheet {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 24px 24px 0 0;
+  padding: 24px;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  z-index: 51;
+}
+.sheet-overlay.open .bottom-sheet { transform: translateY(0); }
+.sheet-handle {
+  width: 36px; height: 4px;
+  background: var(--border2);
+  border-radius: 2px;
+  margin: 0 auto 20px;
+}
+.sheet-title { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.color-option {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+.color-option.selected { border-color: var(--gold); background: rgba(201,169,110,0.1); }
+.color-swatch {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.1);
+  position: relative;
+}
+.color-swatch.selected::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: white;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+.color-name { font-size: 10px; color: var(--muted); text-align: center; }
+.sheet-actions { display: flex; gap: 10px; }
+.sheet-save { flex: 1; }
+.sheet-cancel { flex: 1; }
+
+
+/* =============================================
+   SCREEN 3: TPO
+   ============================================= */
+#screen-tpo .scroll-body { padding: 0 24px 24px; }
+.tpo-input-wrap {
+  position: relative;
+  margin-bottom: 24px;
+}
+.tpo-input {
+  width: 100%;
+  padding: 16px 50px 16px 18px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--rl);
+  color: var(--cream);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 14px;
+  resize: none;
+  height: 90px;
+  transition: border-color 0.2s;
+  outline: none;
+}
+.tpo-input:focus { border-color: var(--gold); }
+.tpo-input::placeholder { color: var(--hint); }
+.tpo-ai-icon {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  border: none;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.tpo-ai-icon:hover { transform: scale(1.05); }
+.tpo-tags-label {
+  font-size: 11px; letter-spacing: 0.15em;
+  color: var(--muted); margin-bottom: 12px; text-transform: uppercase;
+}
+.tpo-tags {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.tpo-tag {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tpo-tag:hover { border-color: var(--gold); background: rgba(201,169,110,0.06); }
+.tpo-tag:active { transform: scale(0.98); }
+.tpo-tag.selected { border-color: var(--gold); background: rgba(201,169,110,0.1); }
+.tpo-tag-num { font-size: 11px; color: var(--gold); font-weight: 600; width: 16px; }
+.tpo-tag-emoji { font-size: 16px; }
+.tpo-tag-text { font-size: 13px; color: var(--cream); flex: 1; }
+.tpo-tag-arrow { font-size: 10px; color: var(--hint); }
+
+
+/* =============================================
+   SCREEN 4: GENERATING
+   ============================================= */
+#screen-generating {
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gen-content {
+  text-align: center;
+  padding: 0 40px;
+}
+.gen-orb {
+  width: 120px; height: 120px;
+  margin: 0 auto 32px;
+  position: relative;
+}
+.gen-orb-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--gold), var(--gold2), var(--gold));
+  animation: spin 2s linear infinite;
+  opacity: 0.8;
+}
+.gen-orb-inner::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  background: var(--bg);
+  border-radius: 50%;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.gen-orb-icon {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px;
+  z-index: 1;
+}
+.gen-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--cream);
+  margin-bottom: 8px;
+}
+.gen-sub { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 32px; }
+.gen-steps {
+  display: flex; flex-direction: column; gap: 8px;
+  text-align: left;
+}
+.gen-step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  transition: all 0.4s;
+}
+.gen-step.done { border-color: rgba(201,169,110,0.3); color: var(--cream); }
+.gen-step.active { border-color: var(--gold); color: var(--cream); background: rgba(201,169,110,0.08); }
+.gen-step-icon {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.gen-step.done .gen-step-icon { background: var(--gold); border-color: var(--gold); }
+.gen-step.active .gen-step-icon { border-color: var(--gold); animation: step-pulse 1s ease-in-out infinite; }
+@keyframes step-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(201,169,110,0.3)} 50%{box-shadow:0 0 0 6px rgba(201,169,110,0)} }
+
+
+/* =============================================
+   SCREEN 5: OUTFIT LIST
+   ============================================= */
+#screen-list .scroll-body { padding: 0 24px 24px; }
+.outfit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.outfit-card {
+  border-radius: var(--rl);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.25s;
+  background: var(--bg2);
+  position: relative;
+}
+.outfit-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+.outfit-card:active { transform: scale(0.97); }
+.outfit-img {
+  width: 100%; aspect-ratio: 3/4;
+  background: var(--bg3);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.outfit-illustration {
+  width: 80%; height: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  position: relative;
+}
+/* Simple fashion figure illustration */
+.fig-head {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.fig-neck { width: 10px; height: 10px; flex-shrink: 0; }
+.fig-top {
+  width: 60px; height: 55px;
+  border-radius: 6px 6px 0 0;
+  flex-shrink: 0;
+  position: relative;
+}
+.fig-bottom {
+  width: 55px; height: 65px;
+  flex-shrink: 0;
+  position: relative;
+}
+.fig-shoes {
+  width: 58px; height: 14px;
+  border-radius: 0 0 6px 6px;
+  flex-shrink: 0;
+}
+.fig-glasses {
+  position: absolute;
+  top: 6px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 2px;
+}
+.fig-lens-sm {
+  width: 10px; height: 6px;
+  border: 1.5px solid;
+  border-radius: 3px;
+}
+.fig-bridge-sm { width: 3px; height: 1px; }
+.outfit-img-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 60%;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+}
+.outfit-card-body { padding: 12px; }
+.outfit-card-title { font-size: 12px; font-weight: 500; color: var(--cream); margin-bottom: 4px; }
+.outfit-card-sub { font-size: 11px; color: var(--muted); }
+.outfit-card-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 8px;
+  border: 1px solid rgba(201,169,110,0.3);
+  border-radius: var(--pill);
+  color: var(--gold);
+  margin-top: 6px;
+}
+.regen-row {
+  display: flex; justify-content: center; margin-top: 4px;
+}
+
+
+/* =============================================
+   SCREEN 6: DETAIL
+   ============================================= */
+#screen-detail .scroll-body { padding: 0; }
+.detail-hero {
+  height: 320px;
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--bg2);
+}
+.detail-hero-img {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.detail-hero-gradient {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; height: 120px;
+  background: linear-gradient(to top, var(--bg), transparent);
+}
+.detail-hero-badge {
+  position: absolute;
+  bottom: 20px; left: 24px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.detail-hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--cream);
+}
+.detail-hero-concept {
+  font-size: 12px; color: var(--gold);
+}
+.detail-body { padding: 0 24px 24px; }
+.style-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--rl);
+  padding: 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.style-card:hover { border-color: var(--border2); }
+.style-card-header {
+  display: flex; align-items: center; gap: 10px;
+}
+.style-card-icon {
+  width: 34px; height: 34px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.style-card-label { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+.style-card-title { font-size: 13px; font-weight: 500; color: var(--cream); }
+.style-card-desc { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.7; }
+.style-card-arrow { margin-left: auto; font-size: 12px; color: var(--hint); transition: transform 0.2s; }
+.style-card.open .style-card-arrow { transform: rotate(180deg); }
+.detail-actions {
+  display: flex; gap: 10px; padding: 16px 24px 32px;
+  flex-shrink: 0;
+}
+.btn-buy {
+  flex: 2;
+  padding: 15px;
+  border-radius: var(--pill);
+  border: none;
+  background: linear-gradient(135deg, #c9a96e, #e8c98a);
+  color: #0a0a0f;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-buy:active { transform: scale(0.98); }
+.btn-close-detail {
+  flex: 1;
+  padding: 15px;
+  border-radius: var(--pill);
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--cream);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+
+/* =============================================
+   SCREEN 7: PURCHASE
+   ============================================= */
+#screen-purchase .scroll-body { padding: 0 24px 24px; }
+.purchase-hero {
+  height: 280px;
+  background: var(--bg2);
+  border-radius: var(--rl);
+  margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.purchase-hero-glow {
+  position: absolute;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(201,169,110,0.12), transparent 70%);
+  border-radius: 50%;
+}
+.purchase-glasses-display {
+  display: flex; align-items: center; gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+.purchase-lens {
+  width: 80px; height: 48px;
+  border: 3px solid var(--gold2);
+  border-radius: 22px 22px 18px 18px;
+  background: rgba(201,169,110,0.06);
+  position: relative;
+}
+.purchase-lens::after {
+  content: '';
+  position: absolute;
+  top: 6px; left: 6px; right: 6px; bottom: 6px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent);
+  border-radius: 16px;
+}
+.purchase-bridge { width: 18px; height: 3px; background: var(--gold2); border-radius: 1.5px; }
+.purchase-badge {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: rgba(201,169,110,0.15);
+  border: 1px solid rgba(201,169,110,0.3);
+  border-radius: var(--pill);
+  padding: 4px 10px;
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+}
+.purchase-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 30px;
+  font-weight: 300;
+  color: var(--cream);
+  margin-bottom: 4px;
+}
+.purchase-price-row {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 16px;
+}
+.purchase-price {
+  font-size: 28px; font-weight: 700; color: var(--gold);
+}
+.purchase-price-unit { font-size: 14px; color: var(--muted); }
+.purchase-desc {
+  font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 20px;
+}
+.purchase-features {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px;
+}
+.purchase-feat {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+.purchase-feat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+.purchase-feat-value { font-size: 13px; color: var(--cream); font-weight: 500; }
+
+
+/* ===== TOAST ===== */
+.toast {
+  position: absolute;
+  bottom: 100px; left: 24px; right: 24px;
+  background: var(--bg3);
+  border: 1px solid var(--gold);
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-size: 13px;
+  color: var(--cream);
+  display: flex; align-items: center; gap: 10px;
+  z-index: 200;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast-icon { font-size: 18px; }
+
+
+/* ===== LOADING OVERLAY ===== */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10,10,15,0.9);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  backdrop-filter: blur(8px);
+}
+.loading-overlay.show { opacity: 1; pointer-events: all; }
+.loading-spinner {
+  width: 50px; height: 50px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+</style>
+</head>
+<body>
+
+<div class="device-wrap">
+<div class="device">
+<div class="screen-wrap" id="app">
+
+<!-- ============ SCREEN: FITTING ============ -->
+<div class="screen active" id="screen-fitting">
+  <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:20;" class="logo">Fit-Sure</div>
+
+  <div class="fitting-hero" id="fitting-hero">
+    <!-- Skeleton loader -->
+    <div class="fitting-hero-skeleton" id="fitting-skeleton">
+      <div class="fitting-hero-skeleton-ring"></div>
+      <div class="fitting-hero-skeleton-text">안경 이미지 로딩 중</div>
+    </div>
+
+    <!-- Real model image -->
+    <img class="fitting-hero-img" id="fitting-model-img" src="" alt="안경 피팅 모델" />
+
+    <!-- Gradients -->
+    <div class="fitting-hero-top-gradient"></div>
+    <div class="fitting-hero-gradient"></div>
+
+    <!-- AR overlay elements -->
+    <div class="ar-overlay">
+      <div class="scan-line"></div>
+      <!-- AR label top left -->
+      <div style="position:absolute;top:90px;left:24px;display:flex;align-items:center;gap:6px;z-index:4;">
+        <div style="width:5px;height:5px;background:var(--gold);border-radius:50%;animation:pulse-ring 1.5s infinite;flex-shrink:0;"></div>
+        <span style="font-size:10px;letter-spacing:0.1em;color:var(--gold);text-transform:uppercase;">AR 피팅 중</span>
+      </div>
+      <div style="position:absolute;top:90px;right:24px;font-size:10px;color:var(--muted);z-index:4;">✦ 가상 착용</div>
+      <!-- Corner brackets -->
+      <div style="position:absolute;top:60px;left:70px;width:24px;height:24px;border-top:1.5px solid var(--gold);border-left:1.5px solid var(--gold);opacity:0.5;"></div>
+      <div style="position:absolute;top:60px;right:70px;width:24px;height:24px;border-top:1.5px solid var(--gold);border-right:1.5px solid var(--gold);opacity:0.5;"></div>
+      <div style="position:absolute;bottom:120px;left:70px;width:24px;height:24px;border-bottom:1.5px solid var(--gold);border-left:1.5px solid var(--gold);opacity:0.5;"></div>
+      <div style="position:absolute;bottom:120px;right:70px;width:24px;height:24px;border-bottom:1.5px solid var(--gold);border-right:1.5px solid var(--gold);opacity:0.5;"></div>
+    </div>
+  </div>
+
+  <div class="fitting-info">
+    <div class="glasses-name" id="glasses-name-display">선플라워 오벌 — 토티셸</div>
+    <div class="glasses-meta">
+      <span class="glasses-tag">오벌</span>
+      <span class="glasses-tag">아세테이트</span>
+      <span class="glasses-tag">토티셸</span>
+      <span class="glasses-price">₩129,000</span>
+    </div>
+    <div class="sec-label">컬러 선택</div>
+    <div class="glasses-variants" style="margin-bottom:20px;" id="variant-row">
+      <div class="variant-dot selected" style="background:#8B6340;" onclick="switchVariant(0, this)"></div>
+      <div class="variant-dot" style="background:#1a1a1a;" onclick="switchVariant(1, this)"></div>
+      <div class="variant-dot" style="background:#4a6080;" onclick="switchVariant(2, this)"></div>
+      <div class="variant-dot" style="background:#c4a882;" onclick="switchVariant(3, this)"></div>
+    </div>
+    <div class="fitsure-cta">
+      <div class="fitsure-badge">
+        <div class="fitsure-badge-icon">✦</div>
+        <div class="fitsure-badge-text">AI 코디 추천 받기</div>
+        <div id="api-status-badge" style="font-size:10px;margin-left:auto;color:var(--muted);">✦ 기본 모드</div>
+      </div>
+      <button class="fitsure-btn" onclick="goTo('prefs')">Fit-Sure →</button>
+    </div>
+    <div style="margin-top:10px;text-align:center;">
+      <button onclick="resetApiKey()" style="background:none;border:none;font-size:11px;color:var(--hint);cursor:pointer;font-family:'Noto Sans KR',sans-serif;">⚙ API 키 설정</button>
+    </div>
+    <div class="fitsure-glow"></div>
+  </div>
+</div>
+
+
+<!-- ============ SCREEN: PREFERENCES ============ -->
+<div class="screen" id="screen-prefs">
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="topbar-title">나의 스타일</div>
+    <div class="step-dots">
+      <div class="step-dot active"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+    </div>
+  </div>
+
+  <div class="scroll-body" style="padding: 0 24px 120px;">
+    <div style="margin-bottom:20px;">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:var(--cream);margin-bottom:4px;">선호도를 알려주세요</div>
+      <div style="font-size:12px;color:var(--muted);">더 정확한 코디를 추천해드릴게요</div>
+    </div>
+
+    <!-- 상의 섹션 -->
+    <div class="body-section">
+      <div class="body-section-header">
+        <div class="body-icon">👕</div>
+        <div>
+          <div class="body-section-title">상의</div>
+          <div class="body-section-sub">Upper Body</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-label">사이즈</div>
+        <select class="form-select" id="upper-size">
+          <option value="">선택하세요</option>
+          <option value="XS">XS</option>
+          <option value="S">S</option>
+          <option value="M" selected>M</option>
+          <option value="L">L</option>
+          <option value="XL">XL</option>
+          <option value="XXL">XXL</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-label">선호 스타일</div>
+        <select class="form-select" id="upper-style">
+          <option value="">선택하세요</option>
+          <option value="미니멀">미니멀</option>
+          <option value="캐주얼" selected>캐주얼</option>
+          <option value="비즈니스 캐주얼">비즈니스 캐주얼</option>
+          <option value="밀리터리">밀리터리</option>
+          <option value="로맨틱">로맨틱</option>
+          <option value="시크">시크</option>
+          <option value="스트리트">스트리트</option>
+          <option value="그런지">그런지</option>
+          <option value="펑크">펑크</option>
+          <option value="스포티">스포티</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-label">선호 색상</div>
+        <button class="color-btn" onclick="openColorSheet('upper')" id="upper-color-btn">
+          <div class="color-dots" id="upper-color-dots">
+            <span style="font-size:12px;color:var(--hint);">색상을 선택하세요</span>
+          </div>
+          <span class="color-btn-arrow">▼</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 하의 섹션 -->
+    <div class="body-section">
+      <div class="body-section-header">
+        <div class="body-icon">👖</div>
+        <div>
+          <div class="body-section-title">하의</div>
+          <div class="body-section-sub">Lower Body</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-label">사이즈</div>
+        <select class="form-select" id="lower-size">
+          <option value="">선택하세요</option>
+          <option value="XS">XS</option>
+          <option value="S">S</option>
+          <option value="M" selected>M</option>
+          <option value="L">L</option>
+          <option value="XL">XL</option>
+          <option value="XXL">XXL</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-label">선호 스타일</div>
+        <select class="form-select" id="lower-style">
+          <option value="">선택하세요</option>
+          <option value="미니멀" selected>미니멀</option>
+          <option value="캐주얼">캐주얼</option>
+          <option value="비즈니스 캐주얼">비즈니스 캐주얼</option>
+          <option value="밀리터리">밀리터리</option>
+          <option value="로맨틱">로맨틱</option>
+          <option value="시크">시크</option>
+          <option value="스트리트">스트리트</option>
+          <option value="그런지">그런지</option>
+          <option value="펑크">펑크</option>
+          <option value="스포티">스포티</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-label">선호 색상</div>
+        <button class="color-btn" onclick="openColorSheet('lower')" id="lower-color-btn">
+          <div class="color-dots" id="lower-color-dots">
+            <span style="font-size:12px;color:var(--hint);">색상을 선택하세요</span>
+          </div>
+          <span class="color-btn-arrow">▼</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn-primary" onclick="goTo('tpo')">다음 — TPO 입력 →</button>
+  </div>
+
+  <!-- Color Sheet -->
+  <div class="sheet-overlay" id="color-sheet-overlay" onclick="closeColorSheet()">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">색상 선택</div>
+      <div class="color-grid" id="color-grid"></div>
+      <div class="sheet-actions">
+        <button class="btn-secondary sheet-cancel" onclick="closeColorSheet()">취소</button>
+        <button class="btn-primary sheet-save" onclick="saveColors()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============ SCREEN: TPO ============ -->
+<div class="screen" id="screen-tpo">
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="topbar-title">상황 입력</div>
+    <div class="step-dots">
+      <div class="step-dot done"></div>
+      <div class="step-dot active"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+    </div>
+  </div>
+
+  <div class="scroll-body" style="padding: 0 24px 120px;">
+    <div style="margin-bottom:20px;">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:var(--cream);margin-bottom:4px;">어떤 상황인가요?</div>
+      <div style="font-size:12px;color:var(--muted);">TPO에 맞는 완벽한 코디를 찾아드려요</div>
+    </div>
+
+    <div class="tpo-input-wrap">
+      <textarea class="tpo-input" id="tpo-input" placeholder="예: 친구들과 주말 브런치, 중요한 비즈니스 미팅, 첫 데이트..."></textarea>
+      <button class="tpo-ai-icon" onclick="triggerGeneration()" title="AI 스타일링">✦</button>
+    </div>
+
+    <div class="tpo-tags-label">추천 상황</div>
+    <div class="tpo-tags" id="tpo-tags-list"></div>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn-primary" onclick="triggerGeneration()">✦ AI 스타일링 시작</button>
+  </div>
+</div>
+
+
+<!-- ============ SCREEN: GENERATING ============ -->
+<div class="screen" id="screen-generating">
+  <div class="gen-content">
+    <div class="gen-orb">
+      <div class="gen-orb-inner"></div>
+      <div class="gen-orb-icon">✦</div>
+    </div>
+    <div class="gen-title">코디 생성 중</div>
+    <div class="gen-sub">선글라워 오벌 안경에 어울리는<br>완벽한 코디를 찾고 있어요</div>
+    <div class="gen-steps" id="gen-steps">
+      <div class="gen-step" data-step="0">
+        <div class="gen-step-icon">1</div>
+        <span>선호도 분석 중...</span>
+      </div>
+      <div class="gen-step" data-step="1">
+        <div class="gen-step-icon">2</div>
+        <span>안경 스타일 매칭 중...</span>
+      </div>
+      <div class="gen-step" data-step="2">
+        <div class="gen-step-icon">3</div>
+        <span>TPO에 맞는 코디 구성 중...</span>
+      </div>
+      <div class="gen-step" data-step="3">
+        <div class="gen-step-icon">4</div>
+        <span>코디 이미지 생성 중...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============ SCREEN: OUTFIT LIST ============ -->
+<div class="screen" id="screen-list">
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="topbar-title">AI 추천 코디</div>
+    <div class="step-dots">
+      <div class="step-dot done"></div>
+      <div class="step-dot done"></div>
+      <div class="step-dot active"></div>
+      <div class="step-dot"></div>
+    </div>
+  </div>
+
+  <div class="scroll-body" style="padding: 0 24px 100px;">
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--muted);" id="list-tpo-label"></div>
+    </div>
+    <div class="outfit-grid" id="outfit-grid"></div>
+    <div class="regen-row">
+      <button class="btn-ghost" onclick="regenOutfits()">↻ 다시 생성하기</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============ SCREEN: DETAIL ============ -->
+<div class="screen" id="screen-detail">
+  <div class="detail-hero" id="detail-hero">
+    <div class="detail-hero-img" id="detail-hero-img"></div>
+    <div class="detail-hero-gradient"></div>
+    <div style="position:absolute;top:48px;left:24px;">
+      <button class="back-btn" onclick="goBack()">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+    </div>
+    <div class="detail-hero-badge">
+      <div class="detail-hero-concept" id="detail-concept"></div>
+      <div class="detail-hero-title" id="detail-title"></div>
+    </div>
+    <div class="step-dots" style="position:absolute;top:52px;right:24px;">
+      <div class="step-dot done"></div>
+      <div class="step-dot done"></div>
+      <div class="step-dot done"></div>
+      <div class="step-dot active"></div>
+    </div>
+  </div>
+
+  <div class="scroll-body">
+    <div class="detail-body" id="detail-body"></div>
+  </div>
+
+  <div class="detail-actions">
+    <button class="btn-close-detail" onclick="goBack()">← 목록</button>
+    <button class="btn-buy" onclick="goTo('purchase')">🛍️ 안경 구매하기</button>
+  </div>
+</div>
+
+
+<!-- ============ SCREEN: PURCHASE ============ -->
+<div class="screen" id="screen-purchase">
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="topbar-title">상품 구매</div>
+    <div class="logo">Rounds</div>
+  </div>
+
+  <div class="scroll-body" style="padding: 0 24px 120px;">
+    <div class="purchase-hero" style="overflow:hidden;padding:0;position:relative;">
+      <div class="purchase-hero-glow"></div>
+      <img id="purchase-hero-img" src="" alt="안경 상품 이미지"
+        style="width:100%;height:100%;object-fit:cover;object-position:top center;opacity:0;transition:opacity 0.5s;position:relative;z-index:1;">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:0;" id="purchase-skeleton">
+        <div style="width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite;"></div>
+      </div>
+      <div class="purchase-badge" style="z-index:2;">NEW</div>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(to top,var(--bg),transparent);z-index:2;"></div>
+    </div>
+
+    <div class="purchase-name" id="purchase-name-el">선플라워 오벌 — 토티셸</div>
+    <div class="purchase-price-row">
+      <div class="purchase-price">129,000</div>
+      <div class="purchase-price-unit">원</div>
+    </div>
+    <div class="purchase-desc">
+      부드러운 오벌 프레임과 따뜻한 토티셸 패턴이 만나 클래식하면서도 모던한 룩을 완성합니다. 가벼운 아세테이트 소재로 하루 종일 편안하게 착용할 수 있어요.
+    </div>
+
+    <div class="purchase-features">
+      <div class="purchase-feat">
+        <div class="purchase-feat-label">소재</div>
+        <div class="purchase-feat-value">아세테이트</div>
+      </div>
+      <div class="purchase-feat">
+        <div class="purchase-feat-label">프레임</div>
+        <div class="purchase-feat-value">오벌</div>
+      </div>
+      <div class="purchase-feat">
+        <div class="purchase-feat-label">무게</div>
+        <div class="purchase-feat-value">18g</div>
+      </div>
+      <div class="purchase-feat">
+        <div class="purchase-feat-label">배송</div>
+        <div class="purchase-feat-value">2~3일 이내</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn-primary" onclick="showToast('🎉 구매가 완료되었습니다!')">구매하기 — ₩129,000</button>
+  </div>
+</div>
+
+
+<!-- Global Toast -->
+<div class="toast" id="toast">
+  <div class="toast-icon" id="toast-icon">✦</div>
+  <div id="toast-text"></div>
+</div>
+
+<!-- API Key Overlay -->
+<div class="sheet-overlay" id="apikey-overlay" style="z-index:200;">
+  <div class="bottom-sheet" style="z-index:201;padding-bottom:32px;">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">✦</div>
+      <div>
+        <div style="font-size:15px;font-weight:500;color:var(--cream);">AI 코디 생성</div>
+        <div style="font-size:11px;color:var(--muted);">Anthropic API 키가 필요합니다</div>
+      </div>
+    </div>
+    <div style="margin:14px 0 10px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;">
+      <div style="font-size:11px;color:var(--muted);line-height:1.7;">
+        API 키는 이 기기에만 저장되며 외부로 전송되지 않습니다.<br>
+        키가 없으면 <span style="color:var(--gold);">기본 코디</span>로 체험할 수 있어요.
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div class="form-label" style="margin-bottom:6px;">Anthropic API Key</div>
+      <input type="password" id="apikey-input" class="form-select"
+        placeholder="sk-ant-api03-..." 
+        style="padding:12px 14px;font-family:monospace;font-size:12px;"
+      />
+      <div id="apikey-error" style="display:none;font-size:11px;color:#e05;margin-top:4px;">올바른 API 키를 입력해주세요 (sk-ant-로 시작)</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-secondary" id="apikey-skip" style="flex:1;padding:12px;">기본 코디로 체험</button>
+      <button class="btn-primary" id="apikey-confirm" style="flex:1;padding:12px;">AI 생성 시작 ✦</button>
+    </div>
+    <div style="margin-top:12px;text-align:center;">
+      <a href="https://console.anthropic.com" style="font-size:11px;color:var(--gold);text-decoration:none;" target="_blank">API 키 발급받기 →</a>
+    </div>
+  </div>
+</div>
+
+</div><!-- /screen-wrap -->
+</div><!-- /device -->
+</div><!-- /device-wrap -->
+
+
+<script>
+// ===== STATE =====
+const state = {
+  currentScreen: 'fitting',
+  history: [],
+  upperColors: [],
+  lowerColors: [],
+  activeColorTarget: null,
+  tempColors: [],
+  tpo: '',
+  selectedOutfit: null,
+  generatedOutfits: []
+};
+
+// ===== COLOR DATA =====
+const COLORS = [
+  { name: '레드', hex: '#C0392B' },
+  { name: '옐로우', hex: '#D4AC0D' },
+  { name: '그린', hex: '#27AE60' },
+  { name: '블루', hex: '#2980B9' },
+  { name: '퍼플', hex: '#8E44AD' },
+  { name: '뉴트럴', hex: '#BDC3C7' },
+  { name: '브라운', hex: '#7D4E2D' },
+  { name: '블랙', hex: '#2C2C2C' },
+];
+
+// ===== TPO TAGS =====
+const TPO_TAGS = [
+  { emoji: '☕', text: '친구들과 주말 브런치' },
+  { emoji: '💼', text: '중요한 비즈니스 미팅' },
+  { emoji: '💑', text: '설레는 첫 데이트' },
+  { emoji: '🏖️', text: '여름 해변 여행' },
+  { emoji: '🏙️', text: '도심 나들이 & 쇼핑' },
+  { emoji: '🌙', text: '친구들과 야간 외출' },
+  { emoji: '📋', text: '취업 면접' },
+  { emoji: '🎪', text: '야외 음악 페스티벌' },
+  { emoji: '🏠', text: '아늑한 홈 파티' },
+  { emoji: '✈️', text: '해외여행 관광' },
+];
+
+// ===== OUTFIT DATA =====
+const OUTFITS = [
+  {
+    id: 1,
+    title: '미니멀 브런치 룩',
+    concept: 'Effortless Chic',
+    tag: '캐주얼',
+    colors: { head: '#C9A96E', neck: '#D4B896', top: '#E8E0D4', bottom: '#8A8070', shoes: '#3D3830', accent: '#C9A96E' },
+    descriptions: {
+      glasses: '토티셸 오벌 프레임이 에크루 톤 전체 룩에 따뜻한 포인트를 더합니다. 클래식한 형태가 캐주얼한 스타일링을 한층 세련되게 마무리해요.',
+      top: '에크루 색상 오버사이즈 린넨 셔츠. 여유로운 실루엣과 내추럴한 소재감이 브런치 분위기와 잘 어울립니다.',
+      bottom: '스톤 그레이 스트레이트 치노 팬츠. 안정적인 뉴트럴 컬러로 상의의 따뜻한 톤과 자연스럽게 어우러져요.',
+      shoes: '화이트 레더 로우탑 스니커즈. 클린한 베이스로 전체 룩에 현대적인 감각을 더합니다.',
+      accessories: '크림 다이얼 미니멀 가죽 시계 + 린넨 소재 토트백으로 가벼운 일상의 완성.'
+    }
+  },
+  {
+    id: 2,
+    title: '어반 시크 룩',
+    concept: 'Urban Sophisticate',
+    tag: '시크',
+    colors: { head: '#C9A96E', neck: '#D4B896', top: '#1a1a2e', bottom: '#2C2C3E', shoes: '#1a1a1a', accent: '#E8C98A' },
+    descriptions: {
+      glasses: '토티셸의 따뜻한 브라운 톤이 다크 모노톤 룩에서 유일한 포인트가 됩니다. 오벌 형태가 샤프한 실루엣을 부드럽게 중화시켜요.',
+      top: '네이비 핀스트라이프 블레이저를 티셔츠 위에 라이트하게 걸쳐 비즈니스 캐주얼 감성을 연출합니다.',
+      bottom: '딥 네이비 슬림 트라우저. 블레이저와 톤온톤으로 세련된 수직적 실루엣을 완성해요.',
+      shoes: '블랙 레더 첼시 부츠. 클래식한 실루엣으로 전체 룩에 정제된 마무리를 더합니다.',
+      accessories: '실버 카드홀더 + 블랙 레더 벨트로 디테일까지 놓치지 않는 어반 룩.'
+    }
+  },
+  {
+    id: 3,
+    title: '여유로운 캐주얼 룩',
+    concept: 'Relaxed Weekend',
+    tag: '캐주얼',
+    colors: { head: '#C9A96E', neck: '#D4B896', top: '#A8C5A0', bottom: '#E8D5B0', shoes: '#D4A574', accent: '#8FA87A' },
+    descriptions: {
+      glasses: '오벌 프레임의 둥근 선이 편안한 그린 & 베이지 팔레트와 잘 어울립니다. 자연스러운 분위기를 완성해주는 키 아이템이에요.',
+      top: '세이지 그린 크루넥 스웨터. 자연에서 가져온 듯한 차분한 색감이 주말의 여유로운 감성을 담아냅니다.',
+      bottom: '밀크 베이지 와이드 코튼 팬츠. 편안한 착용감과 함께 그린 상의와 아름다운 대비를 이룹니다.',
+      shoes: '카멜 레더 로퍼. 클래식한 실루엣이 캐주얼한 룩에 정제된 감각을 더해요.',
+      accessories: '울 소재 버킷햇 + 캔버스 크로스백으로 완성하는 주말 나들이 코디.'
+    }
+  },
+  {
+    id: 4,
+    title: '모노크롬 미니멀 룩',
+    concept: 'Tonal Minimalism',
+    tag: '미니멀',
+    colors: { head: '#C9A96E', neck: '#D4B896', top: '#E0DDD8', bottom: '#C8C4BC', shoes: '#9A9490', accent: '#C9A96E' },
+    descriptions: {
+      glasses: '토티셸 패턴이 올 뉴트럴 룩에 유일한 패턴 요소로 시선을 집중시킵니다. 심플한 코디일수록 안경이 주인공이 돼요.',
+      top: '아이보리 오버사이즈 모크넥 니트. 차분하고 우아한 실루엣이 미니멀 감성의 핵심입니다.',
+      bottom: '그레이지 와이드 울 팬츠. 상의와 톤온톤으로 길고 여유로운 실루엣을 완성해요.',
+      shoes: '웜 그레이 스웨이드 메리제인. 페미닌한 디테일이 미니멀한 룩에 섬세한 포인트를 더합니다.',
+      accessories: '골드 체인 목걸이 하나로 군더더기 없이 완성하는 정제된 룩.'
+    }
+  }
+];
+
+// ===== NAVIGATION =====
+function goTo(screenId) {
+  const current = document.getElementById('screen-' + state.currentScreen);
+  const next = document.getElementById('screen-' + screenId);
+  if (!next) return;
+
+  current.classList.add('exit');
+  setTimeout(() => { current.classList.remove('active','exit'); }, 400);
+
+  state.history.push(state.currentScreen);
+  state.currentScreen = screenId;
+
+  setTimeout(() => {
+    next.classList.add('active');
+    next.style.transform = 'translateX(30px)';
+    next.offsetHeight;
+    next.style.transform = '';
+    // Load purchase image when entering purchase screen
+    if (screenId === 'purchase') loadPurchaseImage();
+  }, 50);
+}
+
+function goBack() {
+  if (state.history.length === 0) return;
+  const prev = state.history.pop();
+  const current = document.getElementById('screen-' + state.currentScreen);
+  const prevEl = document.getElementById('screen-' + prev);
+
+  current.style.transition = 'opacity 0.3s, transform 0.3s';
+  current.style.opacity = '0';
+  current.style.transform = 'translateX(30px)';
+  setTimeout(() => {
+    current.classList.remove('active');
+    current.style.opacity = '';
+    current.style.transform = '';
+  }, 300);
+
+  prevEl.style.transition = 'none';
+  prevEl.style.opacity = '0';
+  prevEl.style.transform = 'translateX(-20px)';
+  prevEl.classList.add('active');
+  prevEl.offsetHeight;
+  prevEl.style.transition = 'opacity 0.3s, transform 0.3s';
+  prevEl.style.opacity = '1';
+  prevEl.style.transform = 'translateX(0)';
+  setTimeout(() => { prevEl.style.transition = ''; prevEl.style.opacity = ''; prevEl.style.transform = ''; }, 300);
+
+  state.currentScreen = prev;
+}
+
+// ===== COLOR SHEET =====
+function openColorSheet(target) {
+  state.activeColorTarget = target;
+  state.tempColors = [...(target === 'upper' ? state.upperColors : state.lowerColors)];
+  renderColorGrid();
+  document.getElementById('color-sheet-overlay').classList.add('open');
+}
+
+function closeColorSheet() {
+  document.getElementById('color-sheet-overlay').classList.remove('open');
+}
+
+function renderColorGrid() {
+  const grid = document.getElementById('color-grid');
+  grid.innerHTML = COLORS.map(c => `
+    <div class="color-option ${state.tempColors.includes(c.name) ? 'selected' : ''}" onclick="toggleColor('${c.name}')">
+      <div class="color-swatch ${state.tempColors.includes(c.name) ? 'selected' : ''}" style="background:${c.hex};"></div>
+      <div class="color-name">${c.name}</div>
+    </div>
+  `).join('');
+}
+
+function toggleColor(name) {
+  const idx = state.tempColors.indexOf(name);
+  if (idx >= 0) state.tempColors.splice(idx, 1);
+  else if (state.tempColors.length < 4) state.tempColors.push(name);
+  renderColorGrid();
+}
+
+function saveColors() {
+  if (state.activeColorTarget === 'upper') state.upperColors = [...state.tempColors];
+  else state.lowerColors = [...state.tempColors];
+  updateColorDisplay(state.activeColorTarget);
+  closeColorSheet();
+}
+
+function updateColorDisplay(target) {
+  const colors = target === 'upper' ? state.upperColors : state.lowerColors;
+  const dotsEl = document.getElementById(target + '-color-dots');
+  if (colors.length === 0) {
+    dotsEl.innerHTML = '<span style="font-size:12px;color:var(--hint);">색상을 선택하세요</span>';
+  } else {
+    const colorMap = {};
+    COLORS.forEach(c => { colorMap[c.name] = c.hex; });
+    dotsEl.innerHTML = colors.map(name => `<div class="color-dot-sm" style="background:${colorMap[name]};"></div>`).join('') +
+      `<span style="font-size:11px;color:var(--muted);margin-left:4px;">${colors.join(', ')}</span>`;
+  }
+}
+
+// ===== TPO TAGS =====
+function renderTPOTags() {
+  const list = document.getElementById('tpo-tags-list');
+  list.innerHTML = TPO_TAGS.map((t, i) => `
+    <div class="tpo-tag" onclick="selectTPOTag('${t.text}', this)">
+      <div class="tpo-tag-num">${(i+1).toString().padStart(2,'0')}</div>
+      <div class="tpo-tag-emoji">${t.emoji}</div>
+      <div class="tpo-tag-text">${t.text}</div>
+      <div class="tpo-tag-arrow">→</div>
+    </div>
+  `).join('');
+}
+
+function selectTPOTag(text, el) {
+  document.querySelectorAll('.tpo-tag').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('tpo-input').value = text;
+  state.tpo = text;
+  setTimeout(() => triggerGeneration(), 300);
+}
+
+// ===== FITTING MODEL IMAGE =====
+const GLASS_VARIANTS = [
+  {
+    color: '토티셸 브라운',
+    prompt: 'Close-up portrait of a young Korean woman wearing tortoiseshell brown oval acetate eyeglasses, soft studio lighting, neutral background, high fashion editorial, photorealistic, sharp focus, 4k',
+    glassesName: '선플라워 오벌 — 토티셸'
+  },
+  {
+    color: '매트 블랙',
+    prompt: 'Close-up portrait of a young Korean woman wearing matte black oval acetate eyeglasses, soft studio lighting, neutral background, high fashion editorial, photorealistic, sharp focus, 4k',
+    glassesName: '선플라워 오벌 — 매트 블랙'
+  },
+  {
+    color: '딥 오션 블루',
+    prompt: 'Close-up portrait of a young Korean woman wearing deep blue oval acetate eyeglasses, soft studio lighting, neutral background, high fashion editorial, photorealistic, sharp focus, 4k',
+    glassesName: '선플라워 오벌 — 딥 오션'
+  },
+  {
+    color: '샌드 베이지',
+    prompt: 'Close-up portrait of a young Korean woman wearing sand beige oval acetate eyeglasses, soft studio lighting, neutral background, high fashion editorial, photorealistic, sharp focus, 4k',
+    glassesName: '선플라워 오벌 — 샌드 베이지'
+  }
+];
+
+let currentVariantIdx = 0;
+// preload cache: index -> url
+const variantImgCache = {};
+
+function buildPollinationsUrl(prompt, seed) {
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=640&seed=${seed}&nologo=true&enhance=true&model=flux`;
+}
+
+function loadFittingImage(idx) {
+  const v = GLASS_VARIANTS[idx];
+  const seed = 42000 + idx * 777;
+  const url = buildPollinationsUrl(v.prompt, seed);
+
+  const img = document.getElementById('fitting-model-img');
+  const skeleton = document.getElementById('fitting-skeleton');
+  const nameEl = document.getElementById('glasses-variant-name');
+
+  // fade out current
+  img.classList.remove('loaded');
+
+  if (variantImgCache[idx]) {
+    img.src = variantImgCache[idx];
+    img.classList.add('loaded');
+    if (skeleton) skeleton.style.display = 'none';
+    if (nameEl) nameEl.textContent = v.glassesName;
+    return;
+  }
+
+  if (skeleton) skeleton.style.display = 'flex';
+
+  const tempImg = new Image();
+  tempImg.onload = () => {
+    variantImgCache[idx] = url;
+    img.src = url;
+    setTimeout(() => {
+      img.classList.add('loaded');
+      if (skeleton) skeleton.style.display = 'none';
+    }, 50);
+    if (nameEl) nameEl.textContent = v.glassesName;
+    // preload adjacent
+    [idx+1, idx-1].forEach(i => {
+      if (i >= 0 && i < GLASS_VARIANTS.length && !variantImgCache[i]) {
+        const pre = new Image();
+        const pSeed = 42000 + i * 777;
+        pre.src = buildPollinationsUrl(GLASS_VARIANTS[i].prompt, pSeed);
+        pre.onload = () => { variantImgCache[i] = pre.src; };
+      }
+    });
+  };
+  tempImg.onerror = () => {
+    if (skeleton) skeleton.innerHTML = `<div style="font-size:12px;color:var(--muted);text-align:center;padding:20px;">이미지를 불러올 수 없습니다.<br><span style="font-size:11px;color:var(--hint);">네트워크를 확인해주세요</span></div>`;
+  };
+  tempImg.src = url;
+}
+
+function switchVariant(idx, el) {
+  document.querySelectorAll('#variant-row .variant-dot').forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+  currentVariantIdx = idx;
+  loadFittingImage(idx);
+  // update glasses name display
+  const nameEl = document.getElementById('glasses-name-display');
+  if (nameEl) nameEl.textContent = GLASS_VARIANTS[idx].glassesName;
+}
+
+function loadPurchaseImage(idx) {
+  const vIdx = idx !== undefined ? idx : currentVariantIdx;
+  const v = GLASS_VARIANTS[vIdx];
+  // Use a product-style prompt for purchase screen
+  const productPrompt = `Professional product photo of ${v.color} oval acetate eyeglasses on white background, studio lighting, clean minimal, ultra sharp, commercial photography, 4k`;
+  const seed = 99000 + vIdx * 333;
+  const url = buildPollinationsUrl(productPrompt, seed);
+
+  const img = document.getElementById('purchase-hero-img');
+  const skeleton = document.getElementById('purchase-skeleton');
+  if (!img) return;
+
+  img.style.opacity = '0';
+  const tempImg = new Image();
+  tempImg.onload = () => {
+    img.src = url;
+    img.style.opacity = '1';
+    if (skeleton) skeleton.style.display = 'none';
+    // update name on purchase screen
+    const nameEl = document.getElementById('purchase-name-el');
+    if (nameEl) nameEl.textContent = v.glassesName;
+  };
+  tempImg.onerror = () => {
+    if (skeleton) skeleton.innerHTML = '';
+    // fallback: use the fitting image cache
+    if (variantImgCache[vIdx]) {
+      img.src = variantImgCache[vIdx];
+      img.style.opacity = '1';
+    }
+  };
+  tempImg.src = url;
+}
+
+// ===== API KEY PROMPT =====
+function checkApiKey() {
+  const saved = localStorage.getItem('anthropic_api_key');
+  if (saved) return saved;
+  return null;
+}
+
+function promptApiKey() {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('apikey-overlay');
+    overlay.classList.add('open');
+    document.getElementById('apikey-confirm').onclick = () => {
+      const val = document.getElementById('apikey-input').value.trim();
+      if (val.startsWith('sk-ant-')) {
+        localStorage.setItem('anthropic_api_key', val);
+        overlay.classList.remove('open');
+        resolve(val);
+      } else {
+        document.getElementById('apikey-error').style.display = 'block';
+      }
+    };
+    document.getElementById('apikey-skip').onclick = () => {
+      overlay.classList.remove('open');
+      resolve(null);
+    };
+  });
+}
+
+// ===== GENERATION =====
+async function triggerGeneration() {
+  const input = document.getElementById('tpo-input');
+  state.tpo = input ? input.value.trim() || '캐주얼 데일리 룩' : '캐주얼 데일리 룩';
+
+  goTo('generating');
+  resetGenSteps();
+
+  const apiKey = checkApiKey();
+  try {
+    if (apiKey) {
+      await runAIGeneration(apiKey);
+    } else {
+      await runFallbackGeneration();
+    }
+  } catch(e) {
+    console.error(e);
+    await runFallbackGeneration();
+  }
+}
+
+function resetGenSteps() {
+  document.querySelectorAll('.gen-step').forEach((s, i) => {
+    s.classList.remove('active','done');
+    s.querySelector('.gen-step-icon').textContent = i + 1;
+  });
+}
+
+async function advanceStep(idx) {
+  const steps = document.querySelectorAll('.gen-step');
+  if (idx > 0) {
+    steps[idx-1].classList.remove('active');
+    steps[idx-1].classList.add('done');
+    steps[idx-1].querySelector('.gen-step-icon').textContent = '✓';
+  }
+  if (idx < steps.length) steps[idx].classList.add('active');
+  await delay(700);
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===== CLAUDE API: GENERATE OUTFIT DESCRIPTIONS =====
+async function runAIGeneration(apiKey) {
+  await advanceStep(0);
+
+  const upperStyle = document.getElementById('upper-style').value || '캐주얼';
+  const lowerStyle = document.getElementById('lower-style').value || '미니멀';
+  const upperSize = document.getElementById('upper-size').value || 'M';
+  const lowerSize = document.getElementById('lower-size').value || 'M';
+  const upperColors = state.upperColors.length ? state.upperColors.join(', ') : '뉴트럴';
+  const lowerColors = state.lowerColors.length ? state.lowerColors.join(', ') : '뉴트럴';
+
+  const prompt = `당신은 패션 스타일리스트입니다. 아래 조건으로 4가지 코디를 추천해주세요.
+
+안경: 토티셸 브라운 오벌 아세테이트 프레임 (따뜻하고 클래식한 분위기)
+상의: 사이즈 ${upperSize}, 선호 스타일 ${upperStyle}, 선호 색상 ${upperColors}
+하의: 사이즈 ${lowerSize}, 선호 스타일 ${lowerStyle}, 선호 색상 ${lowerColors}
+상황(TPO): ${state.tpo}
+
+각 코디는 서로 다른 스타일이어야 합니다.
+반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
+{
+  "outfits": [
+    {
+      "title": "코디 이름 (10자 이내, 한글)",
+      "concept": "영문 컨셉 (3단어)",
+      "tag": "스타일 태그 (한글, 5자 이내)",
+      "descriptions": {
+        "glasses": "안경 스타일링 설명 (2문장, 한글)",
+        "top": "상의 설명 — 구체적 아이템명, 색상, 소재 포함 (2문장, 한글)",
+        "bottom": "하의 설명 — 구체적 아이템명, 색상, 소재 포함 (2문장, 한글)",
+        "shoes": "신발 설명 (1문장, 한글)",
+        "accessories": "액세서리 설명 (1문장, 한글)"
+      },
+      "imagePrompt": "Full body fashion editorial photo, Korean model wearing: [describe top item in English, color, fabric], [describe bottom item in English, color], [describe shoes], tortoiseshell oval glasses. Setting: [TPO environment in English]. Soft studio lighting, clean background, high fashion, photorealistic, 4k"
+    }
+  ]
+}`;
+
+  await advanceStep(1);
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  if (!res.ok) throw new Error('Claude API error: ' + res.status);
+  const data = await res.json();
+  const text = data.content[0].text;
+  const json = JSON.parse(text.replace(/```json|```/g, '').trim());
+
+  await advanceStep(2);
+
+  // Now generate images for each outfit via Pollinations
+  state.generatedOutfits = await generateImages(json.outfits);
+
+  await advanceStep(3);
+  await delay(500);
+
+  renderOutfitList();
+  goTo('list');
+}
+
+// ===== IMAGE GENERATION via Pollinations AI =====
+// Fixed seeds per outfit slot for consistent, reliable results
+const FIXED_SEEDS = [112233, 445566, 778899, 334455];
+
+function buildOutfitImageUrl(prompt, slotIdx) {
+  const seed = FIXED_SEEDS[slotIdx] || (slotIdx * 111111 + 88888);
+  const clean = prompt
+    .replace(/[^\x00-\x7F]/g, '') // strip non-ASCII that can break URL
+    .replace(/\s+/g, ' ').trim();
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(clean)}?width=512&height=768&seed=${seed}&nologo=true&model=flux&enhance=true`;
+}
+
+async function generateImages(outfits) {
+  return outfits.map((o, i) => ({
+    ...o,
+    id: i + 1,
+    imageUrl: buildOutfitImageUrl(o.imagePrompt, i),
+    imageLoaded: false
+  }));
+}
+
+// ===== FALLBACK: static outfits with Pollinations images =====
+async function runFallbackGeneration() {
+  const steps = document.querySelectorAll('.gen-step');
+  for (let i = 0; i < steps.length; i++) {
+    await advanceStep(i);
+  }
+
+  const tpoEnv = getTpoEnv(state.tpo);
+
+  const fallbackOutfits = [
+    {
+      title: '미니멀 브런치 룩', concept: 'Effortless Chic', tag: '캐주얼',
+      descriptions: {
+        glasses: '토티셸 오벌 프레임이 에크루 톤 전체 룩에 따뜻한 포인트를 더합니다. 클래식한 형태가 캐주얼한 스타일링을 세련되게 마무리해요.',
+        top: '에크루 색상 오버사이즈 린넨 셔츠. 여유로운 실루엣과 내추럴한 소재감이 브런치 분위기와 잘 어울립니다.',
+        bottom: '스톤 그레이 스트레이트 치노 팬츠. 뉴트럴 컬러로 상의의 따뜻한 톤과 자연스럽게 어우러져요.',
+        shoes: '화이트 레더 로우탑 스니커즈로 클린한 마무리.',
+        accessories: '크림 다이얼 미니멀 가죽 시계 + 린넨 소재 토트백.'
+      },
+      imagePrompt: `Full body fashion editorial photo, Korean female model, oversized ecru linen shirt, stone gray straight chino pants, white leather sneakers, tortoiseshell oval acetate glasses, ${tpoEnv}, soft natural lighting, clean background, high fashion photorealistic`
+    },
+    {
+      title: '어반 시크 룩', concept: 'Urban Sophisticate', tag: '시크',
+      descriptions: {
+        glasses: '토티셸의 따뜻한 브라운 톤이 다크 모노톤 룩에서 포인트가 됩니다. 오벌 형태가 샤프한 실루엣을 부드럽게 중화시켜요.',
+        top: '네이비 핀스트라이프 블레이저를 티셔츠 위에 라이트하게 걸쳐 비즈니스 캐주얼 감성을 연출합니다.',
+        bottom: '딥 네이비 슬림 트라우저. 블레이저와 톤온톤으로 세련된 실루엣을 완성해요.',
+        shoes: '블랙 레더 첼시 부츠로 정제된 마무리.',
+        accessories: '실버 카드홀더 + 블랙 레더 벨트.'
+      },
+      imagePrompt: `Full body fashion editorial photo, Korean female model, navy pinstripe blazer over white shirt, deep navy slim dress pants, black leather chelsea boots, tortoiseshell oval glasses, ${tpoEnv}, studio lighting, high fashion photorealistic`
+    },
+    {
+      title: '여유로운 캐주얼 룩', concept: 'Relaxed Weekend', tag: '캐주얼',
+      descriptions: {
+        glasses: '오벌 프레임의 둥근 선이 편안한 그린 & 베이지 팔레트와 잘 어울립니다. 자연스러운 분위기를 완성하는 키 아이템이에요.',
+        top: '세이지 그린 크루넥 스웨터. 차분한 색감이 주말의 여유로운 감성을 담아냅니다.',
+        bottom: '밀크 베이지 와이드 코튼 팬츠. 그린 상의와 아름다운 대비를 이룹니다.',
+        shoes: '카멜 레더 로퍼로 캐주얼하면서도 정제된 감각.',
+        accessories: '울 버킷햇 + 캔버스 크로스백.'
+      },
+      imagePrompt: `Full body fashion editorial photo, Korean female model, sage green crewneck sweater, milk beige wide cotton trousers, camel leather loafers, tortoiseshell oval glasses, ${tpoEnv}, natural soft lighting, photorealistic high fashion`
+    },
+    {
+      title: '모노크롬 미니멀 룩', concept: 'Tonal Minimalism', tag: '미니멀',
+      descriptions: {
+        glasses: '토티셸 패턴이 올 뉴트럴 룩에서 유일한 포인트가 됩니다. 심플한 코디일수록 안경이 주인공이 돼요.',
+        top: '아이보리 오버사이즈 모크넥 니트. 우아한 실루엣이 미니멀 감성의 핵심입니다.',
+        bottom: '그레이지 와이드 울 팬츠. 톤온톤으로 길고 여유로운 실루엣을 완성해요.',
+        shoes: '웜 그레이 스웨이드 메리제인으로 섬세한 포인트.',
+        accessories: '골드 체인 목걸이 하나로 완성.'
+      },
+      imagePrompt: `Full body fashion editorial photo, Korean female model, ivory oversized mockneck knit sweater, greige wide wool pants, warm gray suede mary jane heels, tortoiseshell oval glasses, ${tpoEnv}, soft diffused lighting, neutral minimal background, photorealistic`
+    }
+  ];
+
+  state.generatedOutfits = await generateImages(fallbackOutfits);
+  await delay(300);
+  renderOutfitList();
+  goTo('list');
+}
+
+function getTpoEnv(tpo) {
+  if (/브런치|카페|커피/.test(tpo)) return 'bright cafe terrace with morning light';
+  if (/미팅|비즈니스|회의|면접/.test(tpo)) return 'modern minimalist office interior';
+  if (/데이트/.test(tpo)) return 'warm restaurant interior evening light';
+  if (/해변|바다|여름/.test(tpo)) return 'sandy beach golden hour';
+  if (/쇼핑|나들이|도심/.test(tpo)) return 'modern city street soft daylight';
+  if (/야간|나이트|클럽/.test(tpo)) return 'city rooftop at dusk ambient lights';
+  if (/페스티벌|축제/.test(tpo)) return 'outdoor festival colorful crowd bokeh';
+  if (/파티|홈/.test(tpo)) return 'warm indoor ambient home party';
+  if (/여행|관광/.test(tpo)) return 'scenic travel location natural light';
+  return 'clean studio white background soft light';
+}
+
+// ===== OUTFIT LIST =====
+function renderOutfitList() {
+  const outfits = state.generatedOutfits;
+  document.getElementById('list-tpo-label').textContent = `"${state.tpo}" 에 맞는 AI 코디 ${outfits.length}가지`;
+  const grid = document.getElementById('outfit-grid');
+  grid.innerHTML = outfits.map(o => `
+    <div class="outfit-card" onclick="selectOutfit(${o.id})">
+      <div class="outfit-img" id="card-img-${o.id}">
+        ${renderImageCard(o)}
+        <div class="outfit-img-overlay"></div>
+        <div style="position:absolute;bottom:10px;left:10px;">
+          <div class="outfit-card-tag">${o.tag}</div>
+        </div>
+      </div>
+      <div class="outfit-card-body">
+        <div class="outfit-card-title">${o.title}</div>
+        <div class="outfit-card-sub">${o.concept}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // lazy load images
+  outfits.forEach(o => loadCardImage(o));
+}
+
+function renderImageCard(o) {
+  return `
+    <div class="img-skeleton" id="skeleton-${o.id}" style="position:absolute;inset:0;background:linear-gradient(160deg,#16141e,#1e1c2a);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;">
+      <div style="width:32px;height:32px;border:2px solid rgba(201,169,110,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin 0.9s linear infinite;"></div>
+      <div style="font-size:10px;color:var(--hint);letter-spacing:0.08em;" id="skeleton-txt-${o.id}">이미지 생성 중...</div>
+    </div>
+    <img id="img-${o.id}" src="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;opacity:0;transition:opacity 0.6s;" alt="${o.title}">
+  `;
+}
+
+function loadCardImage(o, retryCount) {
+  retryCount = retryCount || 0;
+  const img = document.getElementById('img-' + o.id);
+  const skeleton = document.getElementById('skeleton-' + o.id);
+  const txtEl = document.getElementById('skeleton-txt-' + o.id);
+  if (!img) return;
+
+  img.onload = () => {
+    img.style.opacity = '1';
+    if (skeleton) {
+      skeleton.style.transition = 'opacity 0.4s';
+      skeleton.style.opacity = '0';
+      setTimeout(() => { if(skeleton) skeleton.style.display = 'none'; }, 400);
+    }
+  };
+  img.onerror = () => {
+    if (retryCount < 3) {
+      if (txtEl) txtEl.textContent = `재시도 중... (${retryCount + 1}/3)`;
+      // try alternate seed on retry
+      const altSeed = FIXED_SEEDS[o.id - 1] + (retryCount + 1) * 31337;
+      const clean = o.imagePrompt.replace(/[^\x00-\x7F]/g, '').replace(/\s+/g, ' ').trim();
+      const retryUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(clean)}?width=512&height=768&seed=${altSeed}&nologo=true&model=flux`;
+      setTimeout(() => {
+        img.src = '';
+        img.src = retryUrl;
+        loadCardImage({ ...o, imageUrl: retryUrl }, retryCount + 1);
+      }, 1500 * (retryCount + 1));
+    } else {
+      // After 3 failures show descriptive placeholder
+      if (skeleton) skeleton.innerHTML = buildFallbackCard(o);
+    }
+  };
+  img.src = o.imageUrl;
+}
+
+function buildFallbackCard(o) {
+  // A styled text-based card shown only if all image retries fail
+  const palette = [
+    ['#E8E0D4','#8A8070','#3D3830'],
+    ['#1a1a2e','#2C2C3E','#1a1a1a'],
+    ['#A8C5A0','#E8D5B0','#D4A574'],
+    ['#E0DDD8','#C8C4BC','#9A9490'],
+  ];
+  const p = palette[(o.id - 1) % palette.length];
+  return `
+    <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:linear-gradient(160deg,${p[0]}18,${p[1]}28);padding:16px;">
+      <div style="display:flex;align-items:center;gap:4px;opacity:0.9;">
+        <div style="width:22px;height:14px;border:2px solid ${p[0]};border-radius:4px;background:${p[0]}22;"></div>
+        <div style="width:4px;height:2px;background:${p[0]};"></div>
+        <div style="width:22px;height:14px;border:2px solid ${p[0]};border-radius:4px;background:${p[0]}22;"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <div style="width:40px;height:40px;background:${p[0]}60;border-radius:50%;"></div>
+        <div style="width:52px;height:44px;background:${p[0]}80;border-radius:4px 4px 0 0;"></div>
+        <div style="width:46px;height:52px;background:${p[1]}80;"></div>
+        <div style="width:50px;height:10px;background:${p[2]}80;border-radius:0 0 4px 4px;"></div>
+      </div>
+      <div style="font-size:9px;color:rgba(240,237,232,0.3);text-align:center;line-height:1.6;">${o.title}</div>
+    </div>
+  `;
+}
+
+function regenOutfits() {
+  state.generatedOutfits = [];
+  resetGenSteps();
+  goTo('generating');
+  const apiKey = checkApiKey();
+  if (apiKey) runAIGeneration(apiKey).catch(() => runFallbackGeneration());
+  else runFallbackGeneration();
+}
+
+// ===== OUTFIT DETAIL =====
+function selectOutfit(id) {
+  state.selectedOutfit = state.generatedOutfits.find(o => o.id === id);
+  renderDetail();
+  goTo('detail');
+}
+
+function renderDetail() {
+  const o = state.selectedOutfit;
+  document.getElementById('detail-title').textContent = o.title;
+  document.getElementById('detail-concept').textContent = o.concept;
+
+  const heroImg = document.getElementById('detail-hero-img');
+  heroImg.innerHTML = `
+    <div style="position:absolute;inset:0;background:linear-gradient(160deg,#16141e,#1e1c2a);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;" id="detail-spinner-wrap">
+      <div style="width:40px;height:40px;border:2px solid rgba(201,169,110,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin 0.9s linear infinite;"></div>
+      <div style="font-size:11px;color:var(--hint);" id="detail-spinner-txt">이미지 불러오는 중...</div>
+    </div>
+    <img id="detail-img-real" src="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;opacity:0;transition:opacity 0.6s;" alt="${o.title}">
+  `;
+  loadDetailImage(o, 0);
+
+  const styleItems = [
+    { icon: '🕶️', label: '안경', key: 'glasses' },
+    { icon: '👕', label: '상의', key: 'top' },
+    { icon: '👖', label: '하의', key: 'bottom' },
+    { icon: '👟', label: '신발', key: 'shoes' },
+    { icon: '💍', label: '액세서리', key: 'accessories' },
+  ];
+
+  document.getElementById('detail-body').innerHTML = `
+    <div style="padding:16px 0 8px;">
+      <div style="font-size:10px;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">스타일링 가이드</div>
+      ${styleItems.map((item) => `
+        <div class="style-card" onclick="toggleStyleCard(this)">
+          <div class="style-card-header">
+            <div class="style-card-icon">${item.icon}</div>
+            <div style="flex:1;min-width:0;">
+              <div class="style-card-label">${item.label}</div>
+              <div class="style-card-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${o.descriptions[item.key].split('.')[0]}.</div>
+            </div>
+            <div class="style-card-arrow">▾</div>
+          </div>
+          <div class="style-card-desc" style="display:none;">${o.descriptions[item.key]}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function loadDetailImage(o, retryCount) {
+  const img = document.getElementById('detail-img-real');
+  const wrap = document.getElementById('detail-spinner-wrap');
+  const txt = document.getElementById('detail-spinner-txt');
+  if (!img) return;
+
+  // If card image already loaded (cached in browser), reuse it
+  const cardImg = document.getElementById('img-' + o.id);
+  if (cardImg && cardImg.complete && cardImg.naturalWidth > 0) {
+    img.src = cardImg.src;
+    img.style.opacity = '1';
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+
+  img.onload = () => {
+    img.style.opacity = '1';
+    if (wrap) { wrap.style.transition = 'opacity 0.4s'; wrap.style.opacity = '0'; setTimeout(() => { if(wrap) wrap.style.display='none'; }, 400); }
+  };
+  img.onerror = () => {
+    if (retryCount < 3) {
+      if (txt) txt.textContent = `재시도 중... (${retryCount + 1}/3)`;
+      const altSeed = FIXED_SEEDS[(o.id - 1) % 4] + (retryCount + 1) * 55555;
+      const clean = o.imagePrompt.replace(/[^\x00-\x7F]/g, '').replace(/\s+/g, ' ').trim();
+      const retryUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(clean)}?width=512&height=768&seed=${altSeed}&nologo=true&model=flux`;
+      setTimeout(() => { img.src = ''; img.src = retryUrl; loadDetailImage({ ...o, imageUrl: retryUrl }, retryCount + 1); }, 1500 * (retryCount + 1));
+    } else {
+      if (wrap) wrap.innerHTML = buildFallbackCard(o);
+    }
+  };
+  img.src = o.imageUrl;
+}
+
+function toggleStyleCard(el) {
+  el.classList.toggle('open');
+  const desc = el.querySelector('.style-card-desc');
+  desc.style.display = desc.style.display === 'none' ? 'block' : 'none';
+}
+
+function resetApiKey() {
+  localStorage.removeItem('anthropic_api_key');
+  document.getElementById('apikey-input').value = '';
+  document.getElementById('apikey-error').style.display = 'none';
+  const badge = document.getElementById('api-status-badge');
+  if (badge) { badge.textContent = '✦ 기본 모드'; badge.style.color = 'var(--muted)'; }
+  document.getElementById('apikey-overlay').classList.add('open');
+  document.getElementById('apikey-confirm').onclick = () => {
+    const val = document.getElementById('apikey-input').value.trim();
+    if (val.startsWith('sk-ant-')) {
+      localStorage.setItem('anthropic_api_key', val);
+      document.getElementById('apikey-overlay').classList.remove('open');
+      const badge2 = document.getElementById('api-status-badge');
+      if (badge2) { badge2.textContent = '✦ AI 연결됨'; badge2.style.color = 'var(--gold)'; }
+      showToast('✦ API 키가 저장되었습니다!');
+    } else {
+      document.getElementById('apikey-error').style.display = 'block';
+    }
+  };
+  document.getElementById('apikey-skip').onclick = () => {
+    document.getElementById('apikey-overlay').classList.remove('open');
+  };
+}
+
+// ===== TOAST =====
+function showToast(msg, icon='✦') {
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-text').textContent = msg;
+  document.getElementById('toast-icon').textContent = icon;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ===== INIT =====
+renderTPOTags();
+loadFittingImage(0);
+
+// Show API key badge on fitting screen if key exists
+(function() {
+  const key = localStorage.getItem('anthropic_api_key');
+  const badge = document.getElementById('api-status-badge');
+  if (badge) {
+    badge.textContent = key ? '✦ AI 연결됨' : '✦ 기본 모드';
+    badge.style.color = key ? 'var(--gold)' : 'var(--muted)';
+  }
+})();
+</script>
+</body>
+</html>
